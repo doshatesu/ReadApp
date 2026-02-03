@@ -61,7 +61,7 @@ const CameraScreen = ({ navigation }) => {
           {/* Top Bar */}
           <View style={styles.topBar}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={styles.backButton}>←</Text>
+              <Text style={styles.backButton}>◀</Text>
             </TouchableOpacity>
             <Text style={styles.title}>Camera</Text>
             <TouchableOpacity onPress={() => setFlash(flash === 'on' ? 'off' : 'on')}>
@@ -111,29 +111,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-  },
-  permissionText: {
-    fontSize: 20,
-    color: '#2C3E50',
-    marginBottom: 20,
-  },
-  permissionButton: {
-    backgroundColor: '#3498DB',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-  },
-  permissionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
   camera: {
     flex: 1,
   },
@@ -171,42 +148,12 @@ const styles = StyleSheet.create({
   },
   viewfinder: {
     width: 280,
-    height: 200,
+    height: 380,
     borderWidth: 2,
     borderColor: '#FFFFFF',
     borderRadius: 10,
     backgroundColor: 'transparent',
     position: 'relative',
-  },
-  corner: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderColor: '#E74C3C',
-  },
-  topLeft: {
-    top: -2,
-    left: -2,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-  },
-  topRight: {
-    top: -2,
-    right: -2,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-  },
-  bottomLeft: {
-    bottom: -2,
-    left: -2,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-  },
-  bottomRight: {
-    bottom: -2,
-    right: -2,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
   },
   viewfinderText: {
     color: '#FFFFFF',
@@ -225,7 +172,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 5,
@@ -235,7 +181,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#95A5A6',
   },
   captureIcon: {
-    fontSize: 36,
+    fontSize: 35,
+    marginBottom: 7,
     color: '#FFFFFF',
   },
   captureText: {

@@ -4,7 +4,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from './src/screens/HomeScreen';
 import CameraScreen from './src/screens/CameraScreen';
 import TextDisplayScreen from './src/screens/TextDisplayScreen';
-import ReadingScreen from './src/screens/ReadingScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -21,7 +20,6 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Camera" component={CameraScreen} />
         <Stack.Screen name="TextDisplay" component={TextDisplayScreen} />
-        <Stack.Screen name="Reading" component={ReadingScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
