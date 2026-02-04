@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as TextExtractor from 'expo-text-extractor';
 
 const CameraScreen = ({ navigation }) => {
   const cameraRef = useRef(null);
@@ -8,6 +9,7 @@ const CameraScreen = ({ navigation }) => {
   const [facing, setFacing] = useState('back');
   const [flash, setFlash] = useState('off');
   const [isTakingPicture, setIsTakingPicture] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -16,23 +18,43 @@ const CameraScreen = ({ navigation }) => {
   }, [permission]);
 
   const takePicture = async () => {
-    if (!cameraRef.current || isTakingPicture) return;
+    if (!cameraRef.current || isTakingPicture || isProcessing) return;
 
     setIsTakingPicture(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.8,
       });
-      
-      // Navigate to next screen
+
+      setIsProcessing(true);
+      let recognizedText = '';
+      let ocrErrorMessage = '';
+
+      try {
+        if (TextExtractor.isSupported === false) {
+          ocrErrorMessage = 'Text recognition is not supported on this device.';
+        } else {
+          const lines = await TextExtractor.extractTextFromImage(photo.uri);
+          recognizedText = (lines || []).join('\n').trim();
+          if (!recognizedText) {
+            ocrErrorMessage = 'No text found. Try a clearer photo.';
+          }
+        }
+      } catch (ocrError) {
+        console.error(ocrError);
+        ocrErrorMessage = 'Could not read text. Please try again.';
+      }
+
       navigation.navigate('TextDisplay', {
         imageUri: photo.uri,
-        text: "TOMME SCOUT-EES\n\nSample text extracted from camera."
+        text: recognizedText,
+        ocrError: ocrErrorMessage,
       });
     } catch (error) {
       console.error(error);
     } finally {
       setIsTakingPicture(false);
+      setIsProcessing(false);
     }
   };
 
@@ -85,22 +107,31 @@ const CameraScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.captureButton,
-                isTakingPicture && styles.captureButtonDisabled
+                (isTakingPicture || isProcessing) && styles.captureButtonDisabled
               ]}
               onPress={takePicture}
-              disabled={isTakingPicture}
+              disabled={isTakingPicture || isProcessing}
             >
-              {isTakingPicture ? (
+              {isTakingPicture || isProcessing ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.captureIcon}>📸</Text>
               )}
             </TouchableOpacity>
             <Text style={styles.captureText}>
-              {isTakingPicture ? 'Capturing...' : 'TAP TO CAPTURE'}
+              {isProcessing ? 'Reading text...' : isTakingPicture ? 'Capturing...' : 'TAP TO CAPTURE'}
             </Text>
           </View>
         </View>
+
+        {isProcessing && (
+          <View style={styles.processingOverlay}>
+            <View style={styles.processingCard}>
+              <ActivityIndicator color="#FFFFFF" />
+              <Text style={styles.processingText}>Reading text...</Text>
+            </View>
+          </View>
+        )}
       </CameraView>
     </SafeAreaView>
   );
@@ -189,6 +220,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     marginTop: 15,
+    fontWeight: '600',
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  processingCard: {
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+  },
+  processingText: {
+    marginTop: 10,
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

@@ -5,6 +5,10 @@ node_modules/
 
 # Expo
 .expo/
+
+# Android release signing
+android/keystore.properties
+android/app/readapp-release.jks
 dist/
 web-build/
 expo-env.d.ts

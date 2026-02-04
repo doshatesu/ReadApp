@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Image, Animated } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Image, Animated, ScrollView } from 'react-native';
+import * as Speech from 'expo-speech';
 
 const TextDisplayScreen = ({ route, navigation }) => {
-  const { imageUri, text } = route.params || {};
+  const { imageUri, text, ocrError } = route.params || {};
+  const cleanedText = typeof text === 'string' ? text.trim() : '';
+  const hasText = cleanedText.length > 0;
   const [isPlaying, setIsPlaying] = useState(false);
-  const [frequencyData, setFrequencyData] = useState([]);
-  const pulseAnim = new Animated.Value(1);
+  const [frequencyData, setFrequencyData] = useState(() => new Array(12).fill(0));
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseLoopRef = useRef(null);
 
   // Generate random frequency data for visualization
   const generateFrequencyData = () => {
@@ -19,28 +23,29 @@ const TextDisplayScreen = ({ route, navigation }) => {
     return newData;
   };
 
-  // Handle play/pause button press
-  const handleReadAloudPress = () => {
-    const newPlayingState = !isPlaying;
-    setIsPlaying(newPlayingState);
-    
-    if (newPlayingState) {
-      // Start pulsing animation when playing
-      startPulseAnimation();
-    } else {
-      // Stop animation when paused
-      pulseAnim.stopAnimation();
-      Animated.timing(pulseAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+  const stopPulseAnimation = () => {
+    if (pulseLoopRef.current) {
+      pulseLoopRef.current.stop();
+      pulseLoopRef.current = null;
     }
+    Animated.timing(pulseAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleSpeechEnd = () => {
+    setIsPlaying(false);
+    stopPulseAnimation();
   };
 
   // Pulsing animation for the button
   const startPulseAnimation = () => {
-    Animated.loop(
+    if (pulseLoopRef.current) {
+      pulseLoopRef.current.stop();
+    }
+    pulseLoopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.1,
@@ -53,7 +58,31 @@ const TextDisplayScreen = ({ route, navigation }) => {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    pulseLoopRef.current.start();
+  };
+
+  const startSpeaking = () => {
+    if (!hasText) return;
+    Speech.stop();
+    setIsPlaying(true);
+    startPulseAnimation();
+    Speech.speak(cleanedText, {
+      onDone: handleSpeechEnd,
+      onStopped: handleSpeechEnd,
+      onError: handleSpeechEnd,
+    });
+  };
+
+  // Handle play/pause button press
+  const handleReadAloudPress = () => {
+    if (!hasText) return;
+    if (isPlaying) {
+      Speech.stop();
+      handleSpeechEnd();
+      return;
+    }
+    startSpeaking();
   };
 
   // Update frequency data when playing
@@ -78,10 +107,22 @@ const TextDisplayScreen = ({ route, navigation }) => {
     };
   }, [isPlaying]);
 
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
+
   // Button scale animation
   const buttonScale = {
     transform: [{ scale: pulseAnim }],
   };
+
+  const frequencyLabel = !hasText
+    ? 'No text to read'
+    : isPlaying
+    ? 'Reading Aloud...'
+    : 'Tap to Read Aloud';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -95,6 +136,7 @@ const TextDisplayScreen = ({ route, navigation }) => {
         <View style={{ width: 60 }} />
       </View>
 
+      <ScrollView contentContainerStyle={styles.scrollContent}>
       {imageUri && (
         <Image 
           source={{ uri: imageUri }}
@@ -102,6 +144,14 @@ const TextDisplayScreen = ({ route, navigation }) => {
           resizeMode="cover"
         />
       )}
+
+      <View style={styles.textCard}>
+        <Text style={styles.textLabel}>Extracted Text</Text>
+        <Text style={styles.extractedText}>
+          {hasText ? cleanedText : 'No text found. Try retaking the photo.'}
+        </Text>
+        {!!ocrError && <Text style={styles.errorText}>{ocrError}</Text>}
+      </View>
 
       {/* Volume Frequency Visualization */}
       <View style={styles.frequencyContainer}>
@@ -121,7 +171,7 @@ const TextDisplayScreen = ({ route, navigation }) => {
           ))}
         </View>
         <Text style={[styles.frequencyText, { color: isPlaying ? '#ffffff' : 'rgba(255, 255, 255, 0.6)' }]}>
-          {isPlaying ? 'Reading Aloud...' : 'Tap to Read Aloud'}
+          {frequencyLabel}
         </Text>
       </View>
 
@@ -131,10 +181,12 @@ const TextDisplayScreen = ({ route, navigation }) => {
           <TouchableOpacity 
             style={[
               styles.readAloudButton,
-              isPlaying && styles.readAloudButtonActive
+              isPlaying && styles.readAloudButtonActive,
+              !hasText && styles.readAloudButtonDisabled
             ]}
             onPress={handleReadAloudPress}
             activeOpacity={0.8}
+            disabled={!hasText}
           >
             <Text style={styles.readAloudIcon}>
               {isPlaying ? '⏸️' : '🔊'}
@@ -142,6 +194,7 @@ const TextDisplayScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </Animated.View>
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -177,6 +230,32 @@ const styles = StyleSheet.create({
     height: 400,
     backgroundColor: '#000000',
   },
+  scrollContent: {
+    paddingBottom: 30,
+  },
+  textCard: {
+    backgroundColor: '#ffffff',
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+  },
+  textLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#dcade2',
+    marginBottom: 8,
+  },
+  extractedText: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#2C3E50',
+  },
+  errorText: {
+    marginTop: 8,
+    color: '#C0392B',
+    fontWeight: '600',
+  },
   // Frequency Visualization Styles
   frequencyContainer: {
     alignItems: 'center',
@@ -205,7 +284,6 @@ const styles = StyleSheet.create({
   },
   // Read Aloud Button Styles
   readAloudContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 20,
@@ -230,6 +308,9 @@ const styles = StyleSheet.create({
   },
   readAloudButtonActive: {
     borderColor: '#ffffff',
+  },
+  readAloudButtonDisabled: {
+    opacity: 0.5,
   },
   readAloudIcon: {
     fontSize: 45,
